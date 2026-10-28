@@ -1,0 +1,8 @@
+import {accounts,peso,trialBalance,type Entry} from "../lib/business";
+export default function FinancialPosition({entries,month}:{entries:Entry[];month:string}){
+ const asOf=`${month}-${new Date(+month.slice(0,4),+month.slice(5),0).getDate()}`;
+ const tb=trialBalance(entries.filter(t=>t.date<=asOf),entries);
+ const sum=(lo:number,hi:number)=>Object.entries(tb).filter(([a])=>+a>=lo&&+a<hi).reduce((s,[,b])=>s+b.balance,0);
+ const assets=sum(1000,2000),liabilities=-sum(2000,3000),capital=-sum(3000,4000),earnings=-sum(4000,10000);
+ return <section className="panel small-panel section-space"><div className="panel-heading"><div><h2>Financial position · {asOf}</h2><small className="muted">Recorded balances before unposted accountant adjustments</small></div><span className={`pill ${assets===liabilities+capital+earnings?"green":"amber"}`}>{assets===liabilities+capital+earnings?"Balanced":"Review required"}</span></div><div className="position-grid"><div><h3>Assets</h3>{Object.entries(tb).filter(([a,b])=>+a<2000&&b.balance).map(([a,b])=><div className="metric-row" key={a}><span>{accounts[a]}</span><b>{peso(b.balance)}</b></div>)}<div className="metric-row total"><span>Total assets</span><b>{peso(assets)}</b></div></div><div><h3>Liabilities & equity</h3>{Object.entries(tb).filter(([a,b])=>+a>=2000&&+a<4000&&b.balance).map(([a,b])=><div className="metric-row" key={a}><span>{accounts[a]}</span><b>{peso(-b.balance)}</b></div>)}<div className="metric-row"><span>Accumulated recorded earnings</span><b>{peso(earnings)}</b></div><div className="metric-row total"><span>Total liabilities & equity</span><b>{peso(liabilities+capital+earnings)}</b></div></div></div></section>
+}
