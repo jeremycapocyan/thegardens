@@ -1,16 +1,14 @@
-import { env } from "cloudflare:workers";
-import { getChatGPTUser } from "../../chatgpt-auth";
+import { getUser,sameOrigin } from "../../../lib/auth";
+import {readLedger,appendRecords,StorageConflict} from '../../../lib/storage';
 import { defaults, current, validateTransaction, validDate, today, type Entry, type Settings } from "../../../lib/business";
 import {employees,openShifts,dayRecords,shiftDate,calculatePay,validateEmployee,payrollItems,dayTypes} from '../../../lib/attendance';
 export const dynamic = "force-dynamic";
-function db(){if(!env.DB)throw Error("Database is unavailable. Your entry has not been saved.");return env.DB;}
-async function rows(){const r=await db().prepare("SELECT * FROM records ORDER BY created_at, id").all();return r.results.map((r:any)=>({...JSON.parse(r.payload),id:r.id,kind:r.kind,createdAt:r.created_at,actor:r.actor,sourceKey:r.source_key})) as Entry[];}
 function settings(all:Entry[]){return {...defaults,...all.filter(e=>e.kind==="settings").at(-1)?.settings} as Settings;}
-export async function GET(){try{const user=await getChatGPTUser();if(!user)return Response.json({error:"Sign in to view records."},{status:401});const entries=await rows();return Response.json({entries,settings:settings(entries)},{headers:{"Cache-Control":"no-store"}});}catch(e){return Response.json({error:(e as Error).message},{status:503});}}
+export async function GET(){try{const user=await getUser();if(!user)return Response.json({error:"Sign in to view records."},{status:401});const {entries}=await readLedger();return Response.json({entries,settings:settings(entries)},{headers:{"Cache-Control":"no-store"}});}catch(e){return Response.json({error:(e as Error).message},{status:503});}}
 export async function POST(req:Request){try{
- const user=await getChatGPTUser();if(!user)return Response.json({error:"Sign in to save records."},{status:401});
- if(req.headers.get("origin")!==new URL(req.url).origin)return Response.json({error:"Invalid request origin."},{status:403});
- const body=await req.text();if(body.length>150000)throw Error("Record is too large.");const input=JSON.parse(body);const all=await rows();const s=settings(all);
+ const user=await getUser();if(!user)return Response.json({error:"Sign in to save records."},{status:401});
+ if(!sameOrigin(req))return Response.json({error:"Invalid request origin."},{status:403});
+ const body=await req.text();if(body.length>150000)throw Error("Record is too large.");const input=JSON.parse(body);const snapshot=await readLedger();const all=snapshot.entries;const s=settings(all);
  if(!/^[a-f0-9-]{36}$/.test(input.requestId||""))throw Error("Refresh the app before saving.");
  const prior=all.find(e=>e.id===input.requestId);if(prior)return Response.json({record:prior});
  let t:Entry={...input,id:input.requestId,actor:user.email,createdAt:new Date().toISOString()};
@@ -79,8 +77,6 @@ export async function POST(req:Request){try{
   if((b[t.cashAccount]?.balance||0)!==t.expected)throw Error("Account balance changed. Refresh before closing.");
  }else throw Error("Unsupported record type.");
  if(t.sourceKey&&all.some(x=>x.sourceKey===t.sourceKey))throw Error("This source record has already been imported.");
- // Optimistic revision gate makes overlapping writes retry against a fresh snapshot.
- const result=await db().prepare("INSERT INTO records (id,kind,payload,created_at,actor,source_key) SELECT ?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM records)=?").bind(t.id,t.kind,JSON.stringify(t),t.createdAt,t.actor,t.sourceKey||null,all.length).run();
- if(!result.meta.changes)return Response.json({error:"Another record was saved. Refresh and try again; this entry was not saved."},{status:409});
+ await appendRecords([t],snapshot);
  return Response.json({record:t},{status:201});
- }catch(e){return Response.json({error:(e as Error).message},{status:400});}}
+ }catch(e){return Response.json({error:(e as Error).message},{status:e instanceof StorageConflict?409:400});}}

@@ -28,8 +28,7 @@
       ]
     },
     "types": [
-      "node",
-      "@cloudflare/workers-types"
+      "node"
     ]
   },
   "include": [
@@ -48,6 +47,11 @@
     ".wrangler",
     ".sites-runtime",
     "outputs",
-    "work"
+    "work",
+    "db",
+    "worker",
+    "vite.config.ts",
+    "cloudflare-env.d.ts",
+    "scripts/vite"
   ]
 }
