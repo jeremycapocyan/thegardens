@@ -2,12 +2,12 @@ export type Entry = { id: string; kind: string; createdAt: string; actor: string
 export type Settings = { businessName: string; courts: string[]; partners: string[]; taxProfile: string; tin: string; address: string; rdo: string; books: string; invoiceAuthority: string; lockDate: string; open: string; close: string };
 export const defaults: Settings = {businessName:"The Gardens Pickleball Courts",courts:[],partners:[],taxProfile:"Unconfirmed",tin:"",address:"",rdo:"",books:"Unconfirmed",invoiceAuthority:"",lockDate:"",open:"06:00",close:"22:00"};
 export const accounts: Record<string,string> = {
- "1000":"Cash", "1010":"GCash", "1020":"Bank", "1100":"Accounts receivable", "1150":"Creditable withholding tax", "1200":"Inventory", "1300":"Input VAT — subject to review", "1500":"Court improvements & equipment", "1590":"Accumulated depreciation", "2000":"Accounts payable", "2100":"Customer deposits", "2200":"Output VAT", "2300":"Withholding tax payable", "2400":"Loans payable", "3000":"Partner capital", "3100":"Partner drawings", "3200":"Opening equity / retained earnings", "4000":"Court rental", "4010":"Open play", "4020":"Coaching & events", "4030":"Equipment rental", "4040":"Retail sales", "4090":"Other operating income", "5000":"Cost of goods sold", "6000":"Rent", "6010":"Utilities", "6020":"Salaries & wages", "6030":"Repairs & maintenance", "6040":"Supplies & cleaning", "6050":"Marketing", "6060":"Permits & professional fees", "6070":"Payment processing fees", "6080":"Insurance", "6090":"Other operating expense", "6100":"Depreciation", "6200":"Interest expense", "6300":"Taxes & licenses"
+ "1000":"Cash", "1010":"GCash", "1020":"Bank", "1100":"Accounts receivable", "1150":"Creditable withholding tax", "1200":"Inventory", "1300":"Input VAT — subject to review", "1490":"Historical capital costs — pending allocation", "1500":"Court improvements & equipment", "1590":"Accumulated depreciation", "2000":"Accounts payable", "2100":"Customer deposits", "2200":"Output VAT", "2300":"Withholding tax payable", "2400":"Loans payable", "2500":"Wages payable", "3000":"Partner capital", "3100":"Partner drawings", "3200":"Opening equity / retained earnings", "4000":"Court rental", "4010":"Open play", "4020":"Coaching & events", "4030":"Equipment rental", "4040":"Retail sales", "4090":"Other operating income", "5000":"Cost of goods sold", "6000":"Rent", "6010":"Utilities", "6020":"Salaries & wages", "6030":"Repairs & maintenance", "6040":"Supplies & cleaning", "6050":"Marketing", "6060":"Permits & professional fees", "6070":"Payment processing fees", "6080":"Insurance", "6090":"Other operating expense", "6100":"Depreciation", "6200":"Interest expense", "6300":"Taxes & licenses"
 };
 export const cashAccounts = ["1000","1010","1020"];
 export const saleAccounts = ["4000","4010","4020","4030","4040","4090"];
 export const expenseAccounts = Object.keys(accounts).filter(a=>+a>=5000);
-export const types = ["Sale","Expense","Collection","Supplier payment","Customer deposit","Apply deposit","Deposit refund","Partner contribution","Partner withdrawal","Asset purchase","Inventory purchase","Loan received","Loan repayment","Transfer","Journal"];
+export const types = ["Sale","Expense","Collection","Supplier payment","Customer deposit","Apply deposit","Deposit refund","Partner contribution","Partner withdrawal","Asset purchase","Inventory purchase","Loan received","Loan repayment","Transfer","Payroll payment","Journal"];
 export type Line = {account:string; debit:number; credit:number; partner?:string};
 export function today(){return new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Manila",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());}
 export function peso(cents:number){return new Intl.NumberFormat("en-PH",{style:"currency",currency:"PHP"}).format((cents||0)/100);}
@@ -29,6 +29,7 @@ export function posting(t:Entry, all:Entry[]=[]):Line[]{
  case "Partner withdrawal":dr("3100",a);cr(c,a);break;
  case "Loan received":dr(c,a);cr("2400",a);break;
  case "Loan repayment":dr("2400",a);cr(c,a);break;
+ case "Payroll payment":dr("2500",a);cr(c,a);break;
  case "Transfer":dr(t.destination,a);cr(c,a);break;
  }return lines;
 }
