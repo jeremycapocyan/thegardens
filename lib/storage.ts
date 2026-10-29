@@ -1,4 +1,4 @@
-import {get,put,BlobPreconditionFailedError} from '@vercel/blob';
+import {get,put,head,BlobPreconditionFailedError} from '@vercel/blob';
 import {createHash,randomUUID} from 'node:crypto';
 import {promises as fs} from 'node:fs';
 import path from 'node:path';
@@ -10,7 +10,11 @@ function blobOptions(){return {access:'private' as const,...(process.env.BLOB_RE
 function localPath(key:string){if(!/^[a-zA-Z0-9/_.-]+$/.test(key)||key.split('/').includes('..'))throw Error('Invalid storage key.');const root=path.resolve(process.env.LOCAL_DATA_PATH||'.local-data');return path.join(root,key);}
 const fingerprint=(text:string)=>createHash('sha256').update(text).digest('hex');
 export async function readJson<T>(key:string):Promise<{value:T|null;etag:string|null}>{
- if(useBlob()){const result=await get(prefix+key,{...blobOptions(),useCache:false});if(!result)return {value:null,etag:null};if(!result.stream||result.statusCode!==200)throw Error('Unable to read persistent storage.');const body=await new Response(result.stream).text();return {value:JSON.parse(body),etag:result.blob.etag};}
+ if(useBlob()){const result=await get(prefix+key,{...blobOptions(),useCache:false});if(!result)return {value:null,etag:null};if(!result.stream||result.statusCode!==200)throw Error('Unable to read persistent storage.');const body=await new Response(result.stream).text();let etag=result.blob.etag;
+  // Compressed downloads can have a weak representation ETag. If-Match needs
+  // the strong stored-object ETag, verified against the downloaded revision.
+  if(etag.startsWith('W/')){const metadata=await head(prefix+key,{...blobOptions(),token:process.env.BLOB_READ_WRITE_TOKEN});if(metadata.etag!==etag.slice(2))throw new StorageConflict();etag=metadata.etag;}
+  return {value:JSON.parse(body),etag};}
  try{const body=await fs.readFile(localPath(key),'utf8');return {value:JSON.parse(body),etag:fingerprint(body)}}catch(e){if((e as NodeJS.ErrnoException).code==='ENOENT')return {value:null,etag:null};throw e;}
 }
 export async function writeJson(key:string,value:unknown,expected:string|null){
