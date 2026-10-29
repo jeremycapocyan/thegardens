@@ -2,6 +2,7 @@ import { getUser,sameOrigin } from "../../../lib/auth";
 import {readLedger,appendRecords,StorageConflict} from '../../../lib/storage';
 import { defaults, current, validateTransaction, validDate, today, type Entry, type Settings } from "../../../lib/business";
 import {settingsFor,dailySales,validatePolicy,allocateProfit,validateRegister,scheduleJournal,validateFiling,enforceFinancialRules} from '../../../lib/accounting';
+import {hydrateTransaction,validateDefinition} from '../../../lib/catalog';
 import {employees,openShifts,dayRecords,shiftDate,calculatePay,validateEmployee,payrollItems,dayTypes} from '../../../lib/attendance';
 export const dynamic = "force-dynamic";
 function settings(all:Entry[]){return settingsFor(all);}
@@ -13,6 +14,7 @@ export async function POST(req:Request){try{
  if(!/^[a-f0-9-]{36}$/.test(input.requestId||""))throw Error("Refresh the app before saving.");
  const prior=all.find(e=>e.id===input.requestId);if(prior)return Response.json({record:prior});
  let t:Entry={...input,id:input.requestId,actor:user.email,createdAt:new Date().toISOString()};
+ if(t.kind==='transaction'&&t.type!=='Reversal')t=hydrateTransaction(t,all);
  if(t.kind==='daily_sales'||t.type==='Daily sales')t=dailySales(t,all,s);
  if(t.kind==='profit_allocation'||t.subtype==='profit_allocation')t=allocateProfit(t,all,s);
  if(t.kind==='schedule_post'||t.subtype==='schedule')t=scheduleJournal(t,all);
@@ -28,6 +30,7 @@ export async function POST(req:Request){try{
    const gross=items.reduce((n,x)=>n+x.total,0);if(t.lines.length!==2||t.lines[0].account!=='6020'||t.lines[0].debit!==gross||t.lines[0].credit!==0||t.lines[1].account!=='2500'||t.lines[1].credit!==gross||t.lines[1].debit!==0)throw Error('Payroll journal must match the recorded gross shift earnings.');
   }
  }
+ else if(['category_definition','type_definition'].includes(t.kind)){validateDefinition(t,all);}
  else if(t.kind==='profit_policy'){validatePolicy(t,all,s);}
  else if(t.kind==='register'){validateRegister(t,all);}
  else if(t.kind==='filing'){validateFiling(t,all,s);}

@@ -5,8 +5,8 @@ export const metadata: Metadata = {
   title: "The Gardens | Accounting & Attendance",
   description: "Accounting, partner capital and employee attendance for The Gardens Pickleball Courts.",
   icons: {
-    icon: "/gardens-icon.svg",
-    shortcut: "/gardens-icon.svg",
+    icon: "/gardens-crest.jpg",
+    shortcut: "/gardens-crest.jpg",
   },
 };
 

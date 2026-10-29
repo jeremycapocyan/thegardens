@@ -4,6 +4,18 @@ Private accounting, partner-capital and employee attendance app built with Next.
 
 ## Features
 
+### Business workspace navigation
+
+The main navigation is Dashboard, Accounting, HR, Financing, Operations and Marketing. Dashboard contains team status and module shortcuts. Financing, Operations and Marketing are explicitly planned landing pages. All transaction entry, charts, partner accounts, payroll posting, exports, BIR settings and backups are inside Accounting. HR retains attendance and per-shift pay previews; monthly payroll review/export/posting is in Accounting. Basic device preferences are in the user menu. There is no global transaction-entry button.
+
+The supplied crest is served unchanged as `/gardens-crest.jpg`, including on sign-in and report headers. The interface uses its cream, green, burgundy and gold palette. Accounting has a shared date range, daily/monthly income/expense charts, category drill-downs and consolidated cash movement. Cash movement shares classification logic with the cash-flow report; transfers cancel across money accounts, while funding/deposits remain separate from earned revenue.
+
+### Categories and named transaction presets
+
+Authenticated `category_definition` and `type_definition` records are versioned through `parentId` and stable `entityId`. Category groups map only to existing ledger accounts; presets map only to existing supported transaction behaviors. Built-in behaviors are protected. Case-insensitive duplicate names are rejected; custom definitions may be renamed, remapped or archived. Archiving blocks new use, without altering existing transactions. Each saved transaction stores server-generated category/type snapshots, so later definition changes cannot rewrite its historical names or ledger mapping. Daily summaries can contain multiple custom income categories sharing one parent account.
+
+Create definitions in Accounting → Settings & closing, or inline during entry. Searchable selectors, draft-preserving creation, relevant form fields and live entry totals support phone use. CSV transaction and sales/purchase registers include custom names while general-ledger accounts retain their canonical accounting meaning.
+
 - Sales, expenses, collections, customer deposits, partner funding and withdrawals.
 - Balanced journals, financial position, profit and loss, reconciliation and CSV exports.
 - Original capital-cost rows and partner summaries, preserved separately from accounting classification.
@@ -52,7 +64,7 @@ Tests cover accounting, capital reconciliation, shift pay, overnight overtime, b
 
 ### Daily accounting and reports
 
-Use **Income** to record one daily summary supported by manual invoice series/ranges and the booking app's sales report. Revenue categories include court rental, open play, coaching/events, equipment rental and other income. Gross tender collections are posted separately from processing fees; unpaid sales become receivables. Previous collections, customer advances, applications and refunds are separate Transactions entries. Reversing a daily summary allows a corrected replacement; overlapping invoice claims and duplicate active summaries are rejected on the server.
+Use **Accounting → Daily income** to record one daily summary supported by manual invoice series/ranges and the booking app's sales report. Revenue categories include court rental, open play, coaching/events, equipment rental and other income. Gross tender collections are posted separately from processing fees; unpaid sales become receivables. Previous collections, customer advances, applications and refunds are separate Transactions entries. Reversing a daily summary allows a corrected replacement; overlapping invoice claims and duplicate active summaries are rejected on the server.
 
 Use **Transactions** for expenses, bills and partial supplier payments, asset/prepayment purchases, transfers, payroll payments, partner contributions/drawings, partner loans and profit distributions. Missing invoice evidence is flagged for review rather than suppressing the underlying expense. Partner-loan repayments and profit distributions cannot exceed recorded available balances for that partner.
 
@@ -76,7 +88,7 @@ node --env-file=.env.migration --import ./tests/resolve-ts.mjs scripts/financial
 
 It archives the exact ledger at a unique private Blob key, reads it back, verifies SHA-256, and only then replaces the ledger using the original ETag. A concurrent save aborts the replacement. Financial transactions, capital imports, registers/policies/filings, reconciliations and accounting locks are cleared; settings, administrator credentials and attendance are preserved. The reset audit identifies the archive and excludes historical payroll IDs from new postings. The legacy capital importer returns 410 after reset. Supporting document objects are retained privately and remain referenced by the archive. Re-running the script does not clear new records.
 
-The owner can download the private recovery archive from **Accounting → Opening & closing**. Recovery should be performed by an administrator against a separately verified backup, preserving any records created after the reset; never blindly overwrite a live ledger. Delete the temporary env file after migration/verification. Production financial data, recovery files and credentials must never enter Git.
+The owner can download the private recovery archive from **Accounting → Settings & closing**. Recovery should be performed by an administrator against a separately verified backup, preserving any records created after the reset; never blindly overwrite a live ledger. Delete the temporary env file after migration/verification. Production financial data, recovery files and credentials must never enter Git.
 
 The configured standard shift is 3:30 PM–11:30 PM with a PHP 650 daily base rate. Clock-out stores the rate snapshot and calculated gross earnings. Reviewed payroll is posted once to wages payable; salary payment is a separate accounting transaction. Configure each employee's employment dates, workdays and benefit coverage.
 

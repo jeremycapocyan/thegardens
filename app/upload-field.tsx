@@ -1,0 +1,8 @@
+"use client";
+import {useState,type ReactNode} from 'react';
+import {upload} from '@vercel/blob/client';
+function F({label,children}:{label:string;children:ReactNode}){return <label className="field"><span>{label}</span>{children}</label>}
+export function Attachment({name='attachment',label='Supporting invoice / sales report',initial=''}:{name?:string;label?:string;initial?:string}){
+ const [url,setUrl]=useState(initial),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ return <F label={label}><input type="hidden" name={name} value={url}/><input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={async e=>{const file=e.target.files?.[0];if(!file)return;setBusy(true);setError('');try{if(file.size>8*1024*1024)throw Error('Use a photo or PDF up to 8 MB.');const r=await fetch('/api/files?capabilities=1');if(!r.ok)throw Error('Sign in before uploading.');const capability=await r.json();if(capability.directUpload){const key=crypto.randomUUID();await upload('gardens/v1/documents/'+key,file,{access:'private',contentType:file.type,handleUploadUrl:'/api/files'});setUrl('/api/files?key='+key);}else{const f=new FormData();f.set('file',file);const res=await fetch('/api/files',{method:'POST',body:f});if(!res.ok)throw Error('Upload failed.');setUrl((await res.json()).url);}}catch(e){setError((e as Error).message);}finally{setBusy(false)}}}/>{busy&&<span role="status">Uploading… Please wait before saving.</span>}{url&&<a href={url} target="_blank" rel="noreferrer">View private document</a>}{error&&<span role="alert">{error}</span>}<input aria-label="Upload complete" className="upload-validity" tabIndex={-1} required value={busy?'':'ready'} onChange={()=>{}}/></F>;
+}
