@@ -1,3 +1,4 @@
+import {prepareClock} from '../../../lib/clock';
 import { getUser,sameOrigin } from "../../../lib/auth";
 import {readLedger,appendRecords,StorageConflict} from '../../../lib/storage';
 import { defaults, current, validateTransaction, validDate, today, type Entry, type Settings } from "../../../lib/business";
@@ -42,26 +43,7 @@ export async function POST(req:Request){try{
   if(t.action==='Reopen'&&all.some(e=>e.kind==='transaction'&&e.subtype==='profit_allocation'&&!all.some(r=>r.type==='Reversal'&&r.linkId===e.id)&&e.to>t.lockDate))throw Error('Reverse profit allocations before reopening their periods.');
  }
  else if(t.kind==='employee'){validateEmployee(t,all);if(!t.parentId&&employees(all).some(e=>e.employeeId===t.employeeId))throw Error('Employee already exists.');t.effectiveFrom=t.parentId?today():t.startDate;}
- else if(t.kind==='clock'){
-  const employee=employees(all).find(e=>e.employeeId===t.employeeId);if(!employee)throw Error('Choose an employee.');
-  t.at=new Date().toISOString();const open=openShifts(all).find(e=>e.employeeId===t.employeeId);
-  if(t.action==='in'){
-   if(!employee.active||employee.startDate>today()||(employee.endDate&&employee.endDate<today()))throw Error('Employee is not currently active.');if(open)throw Error('This employee is already clocked in.');
-   if(!dayTypes[t.dayType])throw Error('Choose the day classification.');t.date=shiftDate(t.at);if(t.date<employee.startDate)throw Error('The work date precedes employment.');
-   if(!employee.workdays.includes(new Date(t.date+'T12:00:00+08:00').getUTCDay())&&t.dayType==='Regular')throw Error('This is a scheduled rest day. Choose the appropriate rest-day classification.');
-   if(all.some(e=>e.kind==='clock'&&e.action==='in'&&e.employeeId===t.employeeId&&e.date===t.date))throw Error('A shift is already recorded for this work date. Review it before adding another.');
-   const day=dayRecords(all).find(e=>e.employeeId===t.employeeId&&e.date===t.date&&e.status!=='Clear override');if(day)throw Error('Clear the absence or leave record before clocking in.');
-   t.employeeSnapshot=employee;t.employeeName=employee.name;t.shiftId=t.id;
-  }else{
-   if(!open||open.id!==t.shiftId)throw Error('No matching active shift. Refresh and try again.');t.date=open.date;t.employeeName=open.employeeName;
-   const events=all.filter(e=>e.kind==='clock'&&e.shiftId===open.id);const lastBreak=events.filter(e=>['break_start','break_end'].includes(e.action)).at(-1);const onBreak=lastBreak?.action==='break_start';
-   if(t.action==='break_start'&&onBreak)throw Error('Break already started.');if(t.action==='break_end'&&!onBreak)throw Error('No active break.');
-   if(t.action==='out'){
-    if(t.manualEnd){if(!t.description||!Number.isFinite(Date.parse(t.manualEnd))||Date.parse(t.manualEnd)>Date.now())throw Error('Manual clock-out needs a valid past time and correction reason.');if(events.some(e=>Date.parse(e.at)>Date.parse(t.manualEnd)))throw Error('Manual clock-out precedes a recorded event.');t.recordedAt=t.at;t.at=new Date(t.manualEnd).toISOString();}
-    t.pay=calculatePay(open,t.at,events);t.clockIn=open.at;
-   }else if(!['break_start','break_end'].includes(t.action))throw Error('Invalid clock action.');
-  }
- }
+ else if(t.kind==='clock'){t=prepareClock(t,all);}
  else if(t.kind==='attendance_day'){
   const employee=employees(all).find(e=>e.employeeId===t.employeeId);if(!employee||!validDate(t.date)||t.date<employee.startDate||!['Absent','Paid leave','Unpaid leave','Rest day','Clear override'].includes(t.status))throw Error('Choose employee, valid date and attendance status.');
   if(t.status==='Absent'&&t.date>today())throw Error('Future dates cannot be marked absent.');
